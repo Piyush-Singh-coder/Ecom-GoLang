@@ -5,14 +5,18 @@ import (
 	"net/http"
 	"time"
 
+	repo "github.com/Piyush-Singh-coder/ecom/internal/adapters/postgresql/sqlc"
+	"github.com/Piyush-Singh-coder/ecom/internal/orders"
+	"github.com/Piyush-Singh-coder/ecom/internal/products"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 )
 
 type application struct {
 	config config
 	//logger
-	// db driver
+	db *pgx.Conn
 }
 
 // mount
@@ -30,6 +34,15 @@ func (app *application) mount() http.Handler {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
+	
+	newService := products.NewService(repo.New(app.db))
+	productHandler := products.NewHandler(newService)
+	r.Get("/products", productHandler.ListProducts)
+	r.Get("/products/{id}", productHandler.ProductById)
+
+	orderService := orders.NewService(repo.New(app.db), app.db)
+	orderHandler := orders.NewHandler(orderService)
+	r.Post("/orders", orderHandler.PlaceOrder)
 
 	return r
 }
